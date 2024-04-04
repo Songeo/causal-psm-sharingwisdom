@@ -177,7 +177,6 @@ net_data_full |>
 ```
 :::
 
-
 # 2. Diagrama causal
 
 Los diagramas causales que utilizamos también se denominan grafos acíclicos dirigidos (DAG). Estos grafos son dirigidos porque incluyen flechas que van en una dirección específica. Son acíclicos porque no van en círculos; por ejemplo, una variable no puede causarse a sí misma.
@@ -243,8 +242,6 @@ ggdag_status(malaria_dag,
 -   La elegibilidad para los programas de mosquiteros gratuitos viene determinada por los ingresos y el número de personas en un hogar.
 -   La salud depende de los ingresos.
 
-
-
 ## \[Caso Malaria\] Hipótesis de efecto
 
 Siguiendo la lógica de *do-calculus*, podemos encontrar todos los nodos que confunden la relación entre el uso de mosquiteros y el riesgo de malaria, ya que esos nodos abren caminos secundarios y distorsionan el efecto causal que nos interesa.
@@ -270,7 +267,6 @@ Rosenbaum y Rubin (1983) demostraron que en los estudios observacionales el cond
 
 ------------------------------------------------------------------------
 
-
 Supongamos que recopilamos información completa sobre todos estos factores de confusión. En ese caso, podríamos determinar la probabilidad de exposición de cada hogar y utilizarla para evaluar un análisis que identifique la relación entre la exposición y algún resultado.
 
 Hay muchas formas de incorporar el score de propensión a un análisis. Las técnicas más utilizadas incluyen la estratificación (estimación del efecto causal dentro del estrato de puntuación de propensión), el emparejamiento, la ponderación y el ajuste directo de covariables.
@@ -285,10 +281,7 @@ El objetivo es que las observaciones expuestas y no expuestas sean intercambiabl
 
 Una forma de hacerlo es garantizar que cada observación de nuestra muestra de análisis tenga al menos una observación de la exposición opuesta que tenga valores coincidentes para cada uno de estos factores de confusión.
 
-
-
-
-## \[Caso Malaria\] Scores de propensión
+## \[Caso Malaria\] Score de propensión
 
 ```{r, echo=FALSE}
 net_data_full <- net_data_full |> 
@@ -446,8 +439,6 @@ ggplot(net_data_wts, aes(scores)) +
 
 Una forma de evaluar el balance de las observaciones entre los cofounders es al calcular las diferencias de medias estandarizadas (SMD) para cada factor de confusión con y sin ponderaciones.
 
-En R se calculan con la función `tidy_smd()` y la función `geom_love()` permite graficarlas.
-
 ```{r,fig.align='center', fig.height=3, fig.width=5}
 plot_df <- tidy_smd(
   net_data_wts,
@@ -470,14 +461,7 @@ ggplot(
 
 ## \[Caso Malaria\] Matching
 
-```{r}
-m <- matchit(
-  net ~ income + health + temperature + genetic_resistance,
-  data = net_data_wts,
-  s.weights = net_data_wts$wts,
-  method = NULL
-) 
-```
+
 
 ```{r}
 matched <- matchit(
@@ -488,42 +472,78 @@ matched <- matchit(
   s.weights = net_data_wts$wts,
   replace = F
 )
+net_matched_wts <- get_matches(matched)
+
 matched
 ```
 
-## \[Caso Malaria\] Tamaño de muestra
+## \[Caso Malaria\] Muestra balanceada
 
 ```{r}
 summary(matched)
 ```
 
-```{r}
-net_matched_wts <- get_matches(matched)
-net_matched_wts |> head(3)
-```
 
 # 5. Estimar efecto causal
 
-## Estimadores
+Dependiendo del objetivo del estudio o de la pregunta causal, es posible que queramos estimar diferentes estimandos.
 
-**Average treatment effect**. Es un estimando común es el efecto medio del tratamiento (ATE). La población objetivo es la muestra total o la población de interés. En este caso, el estimando es el valor esperado de la diferencia en los resultados potenciales de todos los individuos:
+A continuación, describiremos dos de los estimadores causales más comunes, sus poblaciones objetivo, las preguntas causales que pueden ayudar a responder y los métodos utilizados para estimarlos.
 
-$$
-E[Y(1)- Y(0)] \quad \text{donde} \quad w_{ATT} = \frac{X}{p} - \frac{(1-X)}{(1-p)}
+**Estimadores:**
+
+- **Average treatment effect** (ATE). La población objetivo es la muestra total o la población de interés.
+
+En este caso, el estimando es el valor esperado de la diferencia en los resultados potenciales de todos los individuos. $$
+E[Y(1)- Y(0)] 
 $$
 
-**Average treatment effect among the treated**.
+Un ejemplo de pregunta de investigación es ¿Debe aplicarse una política a todos los pacientes elegibles?.
 
+La siguiente ponderación de probabilidad inversa le permitirá estimar ATE utilizando la ponderación del score de propensión: $$
+w_{ATT} = \frac{X}{p} - \frac{(1-X)}{(1-p)}
+$$ La mayoría de los ensayos controlados aleatorios se diseñan con ATE como estimación objetivo.
+
+
+----
+
+- **Average treatment effect among the treated** (ATT). La población objetivo para estimar el efecto medio del tratamiento entre los tratados (ATT) es la población expuesta (tratada).
+
+Este estimador causal condiciona a aquellos en el grupo expuesto: $$
+E[Y(1)- Y(0)|X=1]
 $$
-E[Y(1)- Y(0)|X=1] \quad \text{donde} \quad w_{ATT} = X - \frac{(1-X) \cdot p}{(1-p)}
+
+Ejemplos de preguntas de investigación en las que el TCA es de interés podrían incluir ¿Deberíamos detener nuestra campaña de marketing para aquellos que actualmente lo reciben? o ¿Deberían los proveedores médicos dejar de recomendar el tratamiento a aquellos que actualmente lo reciben? (Greifer y Stuart 2021)
+
+ATT puede estimarse mediante ponderación. La ponderación de la TCA se estima mediante: $$
+w_{ATT} = X - \frac{(1-X) \cdot p}{(1-p)}
 $$
+
+Es común usar ATT cuando se utiliza matching, todas las observaciones expuestas se incluyen y se "emparejan" con las observaciones de control, algunas de las cuales pueden descartarse.
+
 ## Estimación de varianza
 
+Una forma de estimar la varianza del estimador es mediante **Bootstrap Sampling**. 
+Bootstrap es un algoritmo sencillo para calcular estimaciones o estadísticos
+medianteremuestreo con sustitución. 
 
+Resulta útil cuando no existe una solución de forma cerrada para 
+calcular algo, como suele ocurrir en la inferencia causal 
+(sobre todo para los errores estándar), y cuando sospechamos que los 
+cálculos paramétricos no son válidos para una situación determinada.
+
+El proceso consiste en:
+
+1. Re muestrear los datos con reemplazo 
+2. Ajustar el estimador a la muestra Bootstrap
+3. Repite N veces.
+
+Finalmente, se obtiene la distribución de estimaciones,
+con la que podemos calcular estadísticos descriptivos de población, 
+como estimaciones puntuales, errores estándar e intervalos de confianza.
 
 
 ## \[Caso Malaria\] Estimación de diferencia
-
 
 Estimación *naive*
 
@@ -553,11 +573,6 @@ reg_model <- lm(malaria_risk ~ net,
 reg_model
 ```
 
-
-
-
-
-
 ## \[Caso Malaria\] Muestras bootstrap
 
 ```{r}
@@ -565,42 +580,41 @@ set.seed(198710)
 
 bootstrapped_net_data <- bootstraps(
   net_data_full,
-  times = 300,
+  times = 500,
   apparent = TRUE
 )
 
-bootstrapped_net_data |> head(3)
+bootstrapped_net_data |> head(6)
 ```
 
 ```{r}
-bootstrapped_net_data$splits[[10]]
+bootstrapped_net_data$splits[[10]] |> str()
 ```
 
-## Función de workflow
+## Ajustar workflow
 
 ```{r}
 #| warning: false
 #| message: false
 
-fit_ipw <- function(split) {
-  # get bootstrapped data sample with `rsample::analysis()`
+# Función de workflow
+fit_psm <- function(split) {
+  # convierte muestra bootstrapped a df
   .df <- analysis(split)
 
-  formula_cs <- 
-    
-  # ajuste score
+  # Estimas scores
   propensity_model <- glm(
     net ~ income + health + temperature + insecticide_resistance,
     data = .df,
     family = binomial()
   )
 
-  # calculate inverse probability weights
+  # Calculo de pesos
   .df <- propensity_model |>
     augment(type.predict = "response", data = .df) |>
     mutate(wts = wt_ate(.fitted, net))
 
-  # m <- matchit(
+  # Match de hogares
   matched <- matchit(
     net ~ income + health + temperature + insecticide_resistance ,
     data = .df,
@@ -610,20 +624,22 @@ fit_ipw <- function(split) {
     replace = T
   )
   .df <- get_matches(matched)
-
-  # fit correctly bootstrapped ipw model
+  
+  # Estimación de efecto
   lm(malaria_risk ~ net, data = .df, weights = wts) |>
     tidy()
 }
 
+# Ejecución de la función a cada muestra
 ipw_results <- 
   bootstrapped_net_data |>
-  mutate(boot_fits = map(splits, fit_ipw))
+  mutate(boot_fits = map(splits, fit_psm))
 
+# Muestra de un elemento
 ipw_results$boot_fits[[30]]
 ```
 
-## Resultados
+## Resúmen de distribución
 
 ```{r}
 boot_estimate <- ipw_results |>
@@ -634,7 +650,7 @@ boot_estimate <- ipw_results |>
 boot_estimate |> knitr::kable()
 ```
 
-```{r}
+```{r, fig.align='center'}
 #| warning: false
 #| message: false
 
@@ -678,14 +694,9 @@ adjusted_estimates <- boot_estimate |>
   unlist() 
 ```
 
+# Dudas
 
-# Gracias
-
-¿Preguntas?
-
-
-
-
+¡Gracias!
 
 # Referencias
 
@@ -698,6 +709,8 @@ Documentos:
 -   A Survey of Causal Inference Applications at Netflix [Netflix Technology Blog](https://netflixtechblog.com/a-survey-of-causal-inference-applications-at-netflix-b62d25175e6f)
 
 -   Causal Inference: What If [Hernán, M](https://www.hsph.harvard.edu/miguel-hernan/wp-content/uploads/sites/1268/2024/01/hernanrobins_WhatIf_2jan24.pdf)
+
+-   Greifer, Noah, and Elizabeth A Stuart. 2021. Choosing the Estimand When Matching or Weighting in Observational Studies. arXiv Preprint arXiv:2106.10577.
 
 -   [Quarto Presentations](https://quarto.org/docs/presentations/revealjs/)
 
