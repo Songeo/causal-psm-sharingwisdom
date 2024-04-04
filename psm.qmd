@@ -27,49 +27,39 @@ library(tidyverse)
 library(causalworkshop)
 ```
 
-
 # Contexto
 
-Un stakeholder pide "drivers" de un acontecimiento concreto, ¿qué está pidiendo? ¿Un modelo para predecir el suceso? ¿Un conocimiento más profundo de las causas del suceso? 
+Un stakeholder pide "drivers" de un acontecimiento concreto, ¿qué está pidiendo? ¿Un modelo para predecir el suceso? ¿Un conocimiento más profundo de las causas del suceso?
 
 > Es una petición vaga, pero suena a interés causal.
 
-
 Las tres prácticas comunes de análisis:
 
-  1. Descripción
-  2. Predicción
-  3. Causalidad
-
-
+1.  Descripción
+2.  Predicción
+3.  Causalidad
 
 ## Técnicas de causalidad
 
-> $X$ causa $Y$ si... intervenimos y cambiamos $X$ sin modificar lo demás...
-y $Y$ cambia. 
+> $X$ causa $Y$ si... intervenimos y cambiamos $X$ sin modificar lo demás... y $Y$ cambia.
 
 En la práctica, esto significa utilizar técnicas como:
 
-- Diseño de un estudio (por ejemplo, un ensayo aleatorio) 
+-   Diseño de un estudio (por ejemplo, un ensayo aleatorio)
 
-> Hay varias razones por las que no podríamos realizar un experimento aleatorizado, 
-entre ellas la ética, el costo y/o el tiempo. 
+> Hay varias razones por las que no podríamos realizar un experimento aleatorizado, entre ellas la ética, el costo y/o el tiempo.
 
-- Métodos estadísticos (como scores de propensión) para calcular un efecto no sesgado de la exposición sobre el resultado.
-
-
-
+-   Métodos estadísticos (como scores de propensión) para calcular un efecto no sesgado de la exposición sobre el resultado.
 
 # Datos
 
 Datos **simulados** por el [Dr. Andrew Heiss](https://evalsp21.classes.andrewheiss.com/example/matching-ipw/#program-background):
 
-**Objetivo:** saber si el uso de mosquiteras disminuye el riesgo de que un hogar contraiga la malaria. 
+**Objetivo:** saber si el uso de mosquiteras disminuye el riesgo de que un hogar contraiga la malaria.
 
 Universo de 1.752 hogares de un país sin nombre y tienen variables relacionadas con factores ambientales, la salud individual y las características del hogar.
 
 Los datos no son experimentales: los investigadores no tienen control sobre quién utiliza mosquiteras, y cada hogar decide por sí mismo si solicita mosquiteras gratuitas o las compra, y si las utiliza en caso de tenerlas.
-
 
 ## Setup
 
@@ -107,80 +97,69 @@ knitr::kable(net_data_full |> head(3))
 ```
 :::
 
-
 ## Variables
 
-- Riesgo de malaria (`malaria_risk`):  La proba de que alguien en el hogar se infecte de malaria. Se mide en una escala de 0 a 100, donde 100 indica mayor riesgo.
-- Mosquitero (`net and net_num`): Variable binaria que indica si el hogar utilizó mosquiteros.
-- Elegible para el programa (`eligible`): Variable binaria que indica si el hogar es elegible para el programa de mosquiteros gratuitos.
-- Ingresos (`income`): Los ingresos mensuales del hogar, en dólares.
-- Temperatura  (`temperature`): La temperatura media nocturna, en grados Celsius.
-- Salud (`health`): Estado de salud autodeclarado en el hogar. Se mide en una escala de 0 a 100. Los valores más altos indican mejor salud.
-- Número de personas en el hogar (`household`): Número de personas que viven en el hogar
-- Resistencia a insecticidas (`insectide_resistance`): Algunas cepas de mosquitos son más resistentes a los insecticidas y, por tanto, suponen un mayor riesgo de infectar a las personas con malaria. Se mide en una escala de 0 a 100, en la que los valores más altos indican una mayor resistencia.
-- Resistencia genética (`genetic_resistance`): Variable binaria que indica si el hogar tiene resistencia genética la malaria, lo que reduce el riesgo de malaria. 
-
-
-
+-   Riesgo de malaria (`malaria_risk`): La proba de que alguien en el hogar se infecte de malaria. Se mide en una escala de 0 a 100, donde 100 indica mayor riesgo.
+-   Mosquitero (`net and net_num`): Variable binaria que indica si el hogar utilizó mosquiteros.
+-   Elegible para el programa (`eligible`): Variable binaria que indica si el hogar es elegible para el programa de mosquiteros gratuitos.
+-   Ingresos (`income`): Los ingresos mensuales del hogar, en dólares.
+-   Temperatura (`temperature`): La temperatura media nocturna, en grados Celsius.
+-   Salud (`health`): Estado de salud autodeclarado en el hogar. Se mide en una escala de 0 a 100. Los valores más altos indican mejor salud.
+-   Número de personas en el hogar (`household`): Número de personas que viven en el hogar
+-   Resistencia a insecticidas (`insectide_resistance`): Algunas cepas de mosquitos son más resistentes a los insecticidas y, por tanto, suponen un mayor riesgo de infectar a las personas con malaria. Se mide en una escala de 0 a 100, en la que los valores más altos indican una mayor resistencia.
+-   Resistencia genética (`genetic_resistance`): Variable binaria que indica si el hogar tiene resistencia genética la malaria, lo que reduce el riesgo de malaria.
 
 # Workflow de inferencia causal
 
 Análisis causal mediante unos pasos clave:
 
-1. Especificar pregunta causal
-2. Dibujar hipótesis mediante un diagrama causal
-3. Modelar supuestos
-4. Diagnosticar modelos
-5. Estimar el efecto causal
-6. Realizar análisis de sensibilidad sobre la estimación del efecto
+1.  Especificar pregunta causal
+2.  Dibujar hipótesis mediante un diagrama causal
+3.  Modelar supuestos
+4.  Diagnosticar modelos
+5.  Estimar el efecto causal
+6.  Realizar análisis de sensibilidad sobre la estimación del efecto
 
-
-## [Caso Malaria] Proceso de análisis
+## \[Caso Malaria\] Proceso de análisis
 
 Para calcular este efecto
 
-1. Especificar  pregunta causal (para el efecto medio del tratamiento ATE)
-2. Dibujar hipótesis mediante un diagrama causal (utilizando DAG)
-3. Modelar supuestos (utilizando el score de propensión)
-4. Diagnosticar modelos (comprobando el equilibrio de los factores de confusión tras la ponderación)
-5. Estimar el efecto causal (mediante ponderación de probabilidad inversa y matching)
-6. Análisis de sensibilidad de la estimación del efecto (mediante análisis de puntos de inflexión)
-
-
-
+1.  Especificar pregunta causal (para el efecto medio del tratamiento ATE)
+2.  Dibujar hipótesis mediante un diagrama causal (utilizando DAG)
+3.  Modelar supuestos (utilizando el score de propensión)
+4.  Diagnosticar modelos (comprobando el equilibrio de los factores de confusión tras la ponderación)
+5.  Estimar el efecto causal (mediante ponderación de probabilidad inversa y matching)
+6.  Análisis de sensibilidad de la estimación del efecto (mediante análisis de puntos de inflexión)
 
 # 1. Pregunta causal
 
-Definición de los términos: 
+Definición de los términos:
 
-- *exposure* (la causa)
-- *outcome* (el efecto)
-- criterios de elegibilidad (¿para quién?)
-- tiempo cero (¿cuándo se empezó a seguir a los participantes?)
-- población objetivo, (¿para quién podemos estimar un efecto de resultado?) 
-- periodo de seguimiento (¿cuándo?)
+-   *exposure* (la causa)
+-   *outcome* (el efecto)
+-   criterios de elegibilidad (¿para quién?)
+-   tiempo cero (¿cuándo se empezó a seguir a los participantes?)
+-   población objetivo, (¿para quién podemos estimar un efecto de resultado?)
+-   periodo de seguimiento (¿cuándo?)
 
-![](img/01_diagram_causal.png){width=90%}
+![](img/01_diagram_causal.png){width="90%"}
 
+## \[Caso Malaria\] Riesgo de malaria
 
-## [Caso Malaria] Riesgo de malaria 
+Utilizaremos datos simulados para responder a una pregunta más específica: ¿Disminuye el riesgo de contraer la malaria al cabo de 1 año si se utilizan mosquiteros tratados con insecticida en comparación con si no se utilizan?
 
-Utilizaremos datos simulados para responder a una pregunta más específica: ¿Disminuye el riesgo de contraer la malaria al cabo de 1 año si se utilizan mosquiteros tratados con insecticida en comparación con si no se utilizan? 
+-   *exposure*: uso de mosquiteros tratados con insecticida
+-   *outcome* riesgo de contraer malaria
+-   criterios de elegibilidad:
+-   tiempo cero: recepción del mosquitero
+-   población objetivo: hogares de un país sin nombre
+-   periodo de seguimiento: un año
 
-- *exposure*: uso de mosquiteros tratados con insecticida
-- *outcome* riesgo de contraer malaria
-- criterios de elegibilidad:
-- tiempo cero: recepción del mosquitero
-- población objetivo: hogares de un país sin nombre
-- periodo de seguimiento: un año
-
-
-## [Caso Malaria] Distribución del riesgo
+## \[Caso Malaria\] Distribución del riesgo
 
 La distribución del riesgo observado en los que usan el mosquitero es el siguiente:
 
 ::: panel-tabset
-
 ### Grafica
 
 ```{r, fig.align='center'}
@@ -189,7 +168,6 @@ net_data_full |>
   geom_density(color = NA, alpha = .8)
 ```
 
-
 ### Promedio
 
 ```{r}
@@ -197,36 +175,25 @@ net_data_full |>
   group_by(net) |>
   summarize(malaria_risk = mean(malaria_risk)) 
 ```
-
-### Correlación
-
-```{r}
-net_data_full |>
-  lm(malaria_risk ~ net, data = _) |>
-  tidy()
-```
-
 :::
+
 
 # 2. Diagrama causal
 
 Los diagramas causales que utilizamos también se denominan grafos acíclicos dirigidos (DAG). Estos grafos son dirigidos porque incluyen flechas que van en una dirección específica. Son acíclicos porque no van en círculos; por ejemplo, una variable no puede causarse a sí misma.
 
-![](img/01_diagram_causal_types.png){fig-align="center" width=60%}
+![](img/01_diagram_causal_types.png){fig-align="center" width="60%"}
 
-
-El tipo de ruta **fork** es una ruta de confusión. Dado que $q$ causa tanto $x$ como $y$, $x$ y $y$ tendrán una asociación espuria. Ambos contienen información de $q$, su causa mutua. 
+El tipo de ruta **fork** es una ruta de confusión. Dado que $q$ causa tanto $x$ como $y$, $x$ y $y$ tendrán una asociación espuria. Ambos contienen información de $q$, su causa mutua.
 
 Esa relación causal mutua hace que $x$ y $y$ se asocien estadísticamente. El ajuste por $q$ bloqueará el sesgo de confusión y nos dará la verdadera relación entre $x$ e $y$.
 
 > **DEF:** Un **factor de confusión** es una causa común de exposición y resultado.
 
-
-## [Caso Malaria]  Diagrama de causalidad 
-
+## \[Caso Malaria\] Diagrama de causalidad
 
 ```{r, echo =FALSE, fig.align='center', fig.width=7}
-mosquito_dag <- dagify(
+malaria_dag <- dagify(
   malaria_risk ~ net + income + health + temperature + resistance + genetic_resistance,
   net ~ income + health + temperature + eligible + household + genetic_resistance,
   eligible ~ income + household,
@@ -262,7 +229,7 @@ mosquito_dag <- dagify(
              genetic_resistance = "resistencia genética")
 )
 
-ggdag_status(mosquito_dag, 
+ggdag_status(malaria_dag, 
              use_labels = "label", 
              text = FALSE, 
              text_size = 4,
@@ -271,90 +238,57 @@ ggdag_status(mosquito_dag,
   theme_dag_blank()
 ```
 
-- El riesgo de malaria depende del uso de mosquiteros, los ingresos, la salud, la temperatura, la resistencia a los insecticidas y la resistencia genética.
-- El uso de mosquiteros depende de los ingresos, la salud, la temperatura, la elegibilidad para el programa de mosquiteros gratuitos, el número de personas en el hogar y la resistencia genética.
-- La elegibilidad para los programas de mosquiteros gratuitos viene determinada por los ingresos y el número de personas en un hogar.
-- La salud depende de los ingresos.
+-   El riesgo de malaria depende del uso de mosquiteros, los ingresos, la salud, la temperatura, la resistencia a los insecticidas y la resistencia genética.
+-   El uso de mosquiteros depende de los ingresos, la salud, la temperatura, la elegibilidad para el programa de mosquiteros gratuitos, el número de personas en el hogar y la resistencia genética.
+-   La elegibilidad para los programas de mosquiteros gratuitos viene determinada por los ingresos y el número de personas en un hogar.
+-   La salud depende de los ingresos.
 
 
-## [Caso Malaria] Hipótesis de efecto
 
-Siguiendo la lógica de *do-calculus*, podemos encontrar todos los nodos que 
-confunden la relación entre el uso de mosquiteros y el riesgo de malaria, 
-ya que esos nodos abren caminos secundarios y distorsionan el efecto causal 
-que nos interesa.
+## \[Caso Malaria\] Hipótesis de efecto
 
-La función `adjustmentSets()` enumera conjuntos de covariables 
-que (asintóticamente) permiten la estimación insesgada de efectos 
-causales a partir de datos observacionales. 
-Se asume que el gráfico causal de entrada es correcto.
+Siguiendo la lógica de *do-calculus*, podemos encontrar todos los nodos que confunden la relación entre el uso de mosquiteros y el riesgo de malaria, ya que esos nodos abren caminos secundarios y distorsionan el efecto causal que nos interesa.
+
+La función `adjustmentSets()` enumera conjuntos de covariables que (asintóticamente) permiten la estimación insesgada de efectos causales a partir de datos observacionales. Se asume que el gráfico causal de entrada es correcto.
 
 ```{r}
-adjustmentSets(mosquito_dag)
+adjustmentSets(malaria_dag)
 ```
-
-
-
 
 # 3. Modelar hipótesis
 
-El score de propensión simula la relación entre la exposición y el resultado 
-si hubiéramos realizado un ensayo aleatorio. Al ajustar un modelo de puntuación de propensión, queremos condicionar todos los factores de confusión conocidos.
-La correlación entre la exposición 
-y el resultado estimará el efecto causal tras aplicar una puntuación de propensión. 
-
+El score de propensión simula la relación entre la exposición y el resultado si hubiéramos realizado un ensayo aleatorio. Al ajustar un modelo de puntuación de propensión, queremos condicionar todos los factores de confusión conocidos. La correlación entre la exposición y el resultado estimará el efecto causal tras aplicar una puntuación de propensión.
 
 > **DEF:** Un **score de propensión** es la probabilidad de estar en el grupo de exposición, condicionada a las covariables observadas.
 
+Cuando se utiliza adecuadamente, el modelo con una propensión puede simular cómo habría sido la relación entre la exposición y el resultado si hubiéramos realizado un ensayo aleatorizado.
 
-Cuando se utiliza adecuadamente, el modelo con una propensión puede simular 
-cómo habría sido la relación entre la exposición y el resultado si hubiéramos realizado un ensayo aleatorizado. 
+Rosenbaum y Rubin (1983) demostraron que en los estudios observacionales el condicionamiento a los scores de propensión puede conducir a estimaciones **no sesgadas** del efecto siempre y cuando se cumplan los supuestos:
 
-Rosenbaum y Rubin (1983) demostraron que en los estudios observacionales 
-el condicionamiento a los scores de propensión puede conducir a estimaciones 
-**no sesgadas** del efecto siempre y cuando se cumplan los supuestos:
+-   No hay factores de confusión no medidos
+-   Cada sujeto tiene una probabilidad distinta de cero de recibir una u otra exposición
 
-- No hay factores de confusión no medidos
-- Cada sujeto tiene una probabilidad distinta de cero de recibir una u otra exposición
-
-----
-
-Supongamos que recopilamos información completa sobre todos estos 
-factores de confusión. En ese caso, podríamos determinar la 
-probabilidad de exposición de cada hogar y utilizarla para 
-evaluar un análisis que identifique 
-la relación entre la exposición y algún resultado. 
-
-Hay muchas formas de incorporar el score de propensión a un análisis. Las técnicas más utilizadas incluyen la estratificación (estimación del efecto causal dentro del estrato de puntuación de propensión), el emparejamiento, la ponderación y el ajuste directo de covariables. 
-
-Hay muchas formas de generar scores de propensión 
-(como la regresión logística, la regresión probit e incluso técnicas 
-de aprendizaje automático como los bosques aleatorios y las redes neuronales),
-pero la **regresión logística** es probablemente el método más común.
+------------------------------------------------------------------------
 
 
-La variable resultado en los modelos de regresión logística debe ser binaria, 
-y las variables explicativas que se incluyen en el modelo ayudan a explicar 
-la variación en la probabilidad del resultado binario. 
+Supongamos que recopilamos información completa sobre todos estos factores de confusión. En ese caso, podríamos determinar la probabilidad de exposición de cada hogar y utilizarla para evaluar un análisis que identifique la relación entre la exposición y algún resultado.
 
+Hay muchas formas de incorporar el score de propensión a un análisis. Las técnicas más utilizadas incluyen la estratificación (estimación del efecto causal dentro del estrato de puntuación de propensión), el emparejamiento, la ponderación y el ajuste directo de covariables.
 
-## Matching 
+Hay muchas formas de generar scores de propensión (como la regresión logística, la regresión probit e incluso técnicas de aprendizaje automático como los bosques aleatorios y las redes neuronales), pero la **regresión logística** es probablemente el método más común.
 
-El objetivo es que las observaciones expuestas y no expuestas 
-sean intercambiables con respecto a los factores de confusión 
-que hemos propuesto en nuestro DAG (de forma que podamos utilizar el 
-efecto observado para una para estimar el contrafactual para la otra). 
+La variable resultado en los modelos de regresión logística debe ser binaria, y las variables explicativas que se incluyen en el modelo ayudan a explicar la variación en la probabilidad del resultado binario.
 
-Una forma de hacerlo es garantizar que cada observación de nuestra 
-muestra de análisis tenga al menos una observación de la exposición
-opuesta que tenga valores coincidentes para cada uno de estos 
-factores de confusión.
+## Matching
+
+El objetivo es que las observaciones expuestas y no expuestas sean intercambiables con respecto a los factores de confusión que hemos propuesto en nuestro DAG (de forma que podamos utilizar el efecto observado para una para estimar el contrafactual para la otra).
+
+Una forma de hacerlo es garantizar que cada observación de nuestra muestra de análisis tenga al menos una observación de la exposición opuesta que tenga valores coincidentes para cada uno de estos factores de confusión.
 
 
 
 
-
-## [Caso Malaria] Scores de propensión
+## \[Caso Malaria\] Scores de propensión
 
 ```{r, echo=FALSE}
 net_data_full <- net_data_full |> 
@@ -363,11 +297,7 @@ net_data_full <- net_data_full |>
          insecticide_resistance, genetic_resistance)
 ```
 
-
-Construimos el modelo que predice el 
-uso de mosquitero en función de ingreso, temperaturas, 
-salud  y resistencia a  malaria.
-
+Construimos el modelo que predice el uso de mosquitero en función de ingreso, temperaturas, salud y resistencia a malaria.
 
 ```{r, warning=FALSE, message=FALSE}
 propensity_model <- glm(
@@ -378,7 +308,6 @@ propensity_model <- glm(
 ```
 
 ::: panel-tabset
-
 ### Scores
 
 ```{r}
@@ -402,122 +331,69 @@ ggplot(net_data_ps, aes(scores)) +
   ) + scale_y_continuous(labels = abs) +
   labs(x = "propensity score")
 ```
-
 :::
-
-
-
-
 
 # 4. Diagnostico
 
-Asumiendo un escenario con dos niveles de exposición: expuesto: $X= 1$ y 
-no expuesto: $X=0$
+Asumiendo un escenario con dos niveles de exposición: expuesto: $X= 1$ y no expuesto: $X=0$
 
-Entonces, los resultados potenciales para la exposición ($Y(1) = [Y_1|X=1]$) y 
-sin exposición ($Y(0) = [Y_0|X=0]$).
+Entonces, los resultados potenciales para la exposición ($Y(1) = [Y_1|X=1]$) y sin exposición ($Y(0) = [Y_0|X=0]$).
 
-La diferencia entre estos resultados $Y(1)-Y(0)$, es decir para comprender el impacto de la entrada (la exposición) en el resultado. 
+La diferencia entre estos resultados $Y(1)-Y(0)$, es decir para comprender el impacto de la entrada (la exposición) en el resultado.
 
-Los supuestos son: 
+Los supuestos son:
 
-1. Consistencia
-2. Intercambiabilidad
-3. Positividad
+1.  Consistencia
+2.  Intercambiabilidad
+3.  Positividad
 
+Estos supuestos se denominan a veces condiciones de identificabilidad, ya que necesitamos que se cumplan para identificar las estimaciones causales.
 
-Estos supuestos se denominan a veces condiciones de 
-identificabilidad, ya que necesitamos que se cumplan para 
-identificar las estimaciones causales.
-
-
-----
+------------------------------------------------------------------------
 
 ### Consistencia
 
-1. **Consistencia:** Suponemos que la pregunta causal que afirma responder es coherente con la que realmente responde el análisis. Matemáticamente, esto significa:
-$$
-Y_\texttt{obs} = (X)[Y(1)] + (1-X)[Y(0)].
-$$ 
+1.  **Consistencia:** Suponemos que la pregunta causal que afirma responder es coherente con la que realmente responde el análisis. Matemáticamente, esto significa: $$
+    Y_\texttt{obs} = (X)[Y(1)] + (1-X)[Y(0)].
+    $$
 
-En otras palabras, el resultado observado es exactamente igual al 
-resultado potencial bajo la exposición recibida. Dos formas habituales 
-de hablar de este supuesto son:
+En otras palabras, el resultado observado es exactamente igual al resultado potencial bajo la exposición recibida. Dos formas habituales de hablar de este supuesto son:
 
+-   **Consistencia con exposición bien definida**: Suponemos que para cada valor de la exposición, no hay diferencia entre los sujetos en la asignación de esa exposición. Dicho de otro modo, no existen múltiples versiones del tratamiento.
 
-- **Consistencia con exposición bien definida**: Suponemos que para cada valor 
-de la exposición, no hay diferencia entre los sujetos en la asignación de esa 
-exposición. Dicho de otro modo, no existen múltiples versiones del tratamiento.
-  
-- **Consistencia sin interferencias**: Suponemos que el resultado (técnicamente 
-todos los resultados potenciales, independientemente de si se observan o no) 
-para cualquier sujeto no depende de la exposición de otro sujeto.
+-   **Consistencia sin interferencias**: Suponemos que el resultado (técnicamente todos los resultados potenciales, independientemente de si se observan o no) para cualquier sujeto no depende de la exposición de otro sujeto.
 
+Este supuesto a veces se denomina como supuesto de valor de tratamiento unitario estable (stable-unit-treatment-value-assumption) o **SUTVA** (Imbens y Rubin, 2015).
 
-Este supuesto a veces se denomina como supuesto de valor de tratamiento unitario estable (stable-unit-treatment-value-assumption) o **SUTVA** (Imbens y Rubin, 2015). 
-
-
-
-----
+------------------------------------------------------------------------
 
 ### Intercambiabilidad
 
-Suponemos que dentro de los niveles de las variables relevantes o 
-factores de confusión, los sujetos expuestos y no expuestos tienen 
-la misma probabilidad de experimentar cualquier resultado antes 
-de la exposición; es decir, los sujetos expuestos y 
-no expuestos son intercambiables. 
+Suponemos que dentro de los niveles de las variables relevantes o factores de confusión, los sujetos expuestos y no expuestos tienen la misma probabilidad de experimentar cualquier resultado antes de la exposición; es decir, los sujetos expuestos y no expuestos son intercambiables.
 
-Este supuesto a veces se 
-denomina ausencia de factores de confusión no medidos.
-
+Este supuesto a veces se denomina ausencia de factores de confusión no medidos.
 
 ### Positividad
 
-Suponemos que dentro de cada nivel y combinación de las variables 
-de estudio utilizadas para lograr la intercambiabilidad, hay 
-sujetos expuestos y no expuestos. Dicho de otro modo, cada individuo 
-tiene alguna posibilidad de experimentar cada nivel de exposición 
-disponible. A veces, esto se denomina suposición probabilística.
+Suponemos que dentro de cada nivel y combinación de las variables de estudio utilizadas para lograr la intercambiabilidad, hay sujetos expuestos y no expuestos. Dicho de otro modo, cada individuo tiene alguna posibilidad de experimentar cada nivel de exposición disponible. A veces, esto se denomina suposición probabilística.
 
-----
+------------------------------------------------------------------------
 
+## Ponderar
 
-## Ponderar 
+Es común en estos casos observar desbalance en la distribución de los scores entre el grupo de expuestos y no expuestos. Esto es por los conteos más altos del grupo de no expuestos.
 
-Es común en estos casos observar desbalance en la distribución de los scores 
-entre el grupo de expuestos y no expuestos. Esto es por los conteos más altos 
-del grupo de no expuestos. 
+La ponderación permite que el score sea suave, aplicando una transformación que permita, en promedio, que las covariables de interés estén equilibradas en la población ponderada. Para ello, construiremos un peso utilizando el score de propensión.
 
-La ponderación permite que el score sea suave, aplicando una transformación 
-que permita, en promedio, que las covariables de interés estén equilibradas 
-en la población ponderada. Para ello, construiremos un peso utilizando 
-el score de propensión. 
+La siguiente ponderación de probabilidad inversa permitirá estimar el efecto usando la ponderacaión $w_~{ATT}$ del score de propensión $p$, donde $X$ representa el valor de exposición o tratamiento.
 
-La siguiente ponderación de probabilidad inversa permitirá estimar el efecto
-usando la ponderacaión $w_~{ATT}$ del score de propensión $p$, donde $X$ 
-representa el valor de exposición o tratamiento.
+## \[Caso Malaria\] Ponderación
 
+Algunos puntos que podemos resaltar para obtener el diagnóstico sobre la distribución de los scores son:
 
-
-
-
-
-## [Caso Malaria] Ponderación
-
-
-Algunos puntos que podemos resaltar para obtener el
-diagnóstico sobre la distribución de los scores son:
-
-1. Buscar la falta de empalme como posible problema de positividad. 
-Pero, un empalme excesivo puede indicar un modelo deficiente.
-2. El efecto medio del tratamiento entre los tratados es más fácil 
-de estimar con precisión (debido a los conteos más altos) 
-que en el grupo de control o no expuesto.
-3. Un único valor atípico en cualquiera de los grupos en 
-relación con el intervalo podría ser un problema y justifica 
-la revisión de los datos.
-
+1.  Buscar la falta de empalme como posible problema de positividad. Pero, un empalme excesivo puede indicar un modelo deficiente.
+2.  El efecto medio del tratamiento entre los tratados es más fácil de estimar con precisión (debido a los conteos más altos) que en el grupo de control o no expuesto.
+3.  Un único valor atípico en cualquiera de los grupos en relación con el intervalo podría ser un problema y justifica la revisión de los datos.
 
 ```{r, fig.align='center', echo=FALSE}
 ggplot(net_data_ps, aes(scores)) +
@@ -528,13 +404,11 @@ ggplot(net_data_ps, aes(scores)) +
   labs(x = "propensity score")
 ```
 
-----
+------------------------------------------------------------------------
 
-En este caso, la función `wt_ate()` calcula los pesos de 
-los scores de propensión. 
+En este caso, la función `wt_ate()` calcula los pesos de los scores de propensión.
 
 ::: panel-tabset
-
 ### Pesos
 
 ```{r}
@@ -566,20 +440,13 @@ ggplot(net_data_wts, aes(scores)) +
   scale_y_continuous(labels = abs) +
   labs(x = "propensity score")
 ```
-
-
 :::
 
+## \[Caso Malaria\] Evaluación de balance de cofounders
 
+Una forma de evaluar el balance de las observaciones entre los cofounders es al calcular las diferencias de medias estandarizadas (SMD) para cada factor de confusión con y sin ponderaciones.
 
-## [Caso Malaria] Evaluación de balance de cofounders
-
-Una forma de evaluar el balance de las observaciones entre los cofounders 
-es al calcular las diferencias de medias estandarizadas (SMD)
-para cada factor de confusión con y sin ponderaciones. 
-
-En R se calculan con la función `tidy_smd()` y la función `geom_love()`
-permite graficarlas.
+En R se calculan con la función `tidy_smd()` y la función `geom_love()` permite graficarlas.
 
 ```{r,fig.align='center', fig.height=3, fig.width=5}
 plot_df <- tidy_smd(
@@ -601,10 +468,7 @@ ggplot(
   geom_love()
 ```
 
-
-
-## [Caso Malaria] Matching
-
+## \[Caso Malaria\] Matching
 
 ```{r}
 m <- matchit(
@@ -614,7 +478,6 @@ m <- matchit(
   method = NULL
 ) 
 ```
-
 
 ```{r}
 matched <- matchit(
@@ -628,24 +491,20 @@ matched <- matchit(
 matched
 ```
 
+## \[Caso Malaria\] Tamaño de muestra
 
 ```{r}
 summary(matched)
 ```
-
 
 ```{r}
 net_matched_wts <- get_matches(matched)
 net_matched_wts |> head(3)
 ```
 
-
-
 # 5. Estimar efecto causal
 
-
-
-## Estimador 
+## Estimadores
 
 **Average treatment effect**. Es un estimando común es el efecto medio del tratamiento (ATE). La población objetivo es la muestra total o la población de interés. En este caso, el estimando es el valor esperado de la diferencia en los resultados potenciales de todos los individuos:
 
@@ -653,16 +512,20 @@ $$
 E[Y(1)- Y(0)] \quad \text{donde} \quad w_{ATT} = \frac{X}{p} - \frac{(1-X)}{(1-p)}
 $$
 
+**Average treatment effect among the treated**.
 
-**Average treatment effect among the treated**. 
 $$
 E[Y(1)- Y(0)|X=1] \quad \text{donde} \quad w_{ATT} = X - \frac{(1-X) \cdot p}{(1-p)}
 $$
+## Estimación de varianza
 
 
 
-## [Caso Malaria] Estimación de diferencia
 
+## \[Caso Malaria\] Estimación de diferencia
+
+
+Estimación *naive*
 
 ```{r}
 reg_model <- lm(malaria_risk ~ net, 
@@ -671,6 +534,8 @@ reg_model <- lm(malaria_risk ~ net,
 reg_model
 ```
 
+Estimación *matched*
+
 ```{r}
 reg_model <- lm(malaria_risk ~ net, 
                 data = net_matched_wts) |> 
@@ -678,6 +543,7 @@ reg_model <- lm(malaria_risk ~ net,
 reg_model
 ```
 
+Estimación *matched + weights*
 
 ```{r}
 reg_model <- lm(malaria_risk ~ net, 
@@ -692,17 +558,39 @@ reg_model
 
 
 
-## [Caso Malaria] Estimación de varianza
-
+## \[Caso Malaria\] Muestras bootstrap
 
 ```{r}
+set.seed(198710)
+
+bootstrapped_net_data <- bootstraps(
+  net_data_full,
+  times = 300,
+  apparent = TRUE
+)
+
+bootstrapped_net_data |> head(3)
+```
+
+```{r}
+bootstrapped_net_data$splits[[10]]
+```
+
+## Función de workflow
+
+```{r}
+#| warning: false
+#| message: false
+
 fit_ipw <- function(split) {
   # get bootstrapped data sample with `rsample::analysis()`
   .df <- analysis(split)
 
+  formula_cs <- 
+    
   # ajuste score
   propensity_model <- glm(
-    net ~ income + health + temperature + genetic_resistance,
+    net ~ income + health + temperature + insecticide_resistance,
     data = .df,
     family = binomial()
   )
@@ -710,16 +598,16 @@ fit_ipw <- function(split) {
   # calculate inverse probability weights
   .df <- propensity_model |>
     augment(type.predict = "response", data = .df) |>
-    mutate(wts = wt_att(.fitted, net))
+    mutate(wts = wt_ate(.fitted, net))
 
   # m <- matchit(
   matched <- matchit(
-    net ~ income + health + temperature + genetic_resistance,
+    net ~ income + health + temperature + insecticide_resistance ,
     data = .df,
     distance = "glm",
     link = "logit", 
     s.weights = .df$wts,
-    replace = F
+    replace = T
   )
   .df <- get_matches(matched)
 
@@ -727,44 +615,29 @@ fit_ipw <- function(split) {
   lm(malaria_risk ~ net, data = .df, weights = wts) |>
     tidy()
 }
-```
 
+ipw_results <- 
+  bootstrapped_net_data |>
+  mutate(boot_fits = map(splits, fit_ipw))
 
-## Simulaciones
-
-```{r}
-bootstrapped_net_data <- bootstraps(
-  net_data_full,
-  times = 100,
-  # required to calculate CIs later
-  apparent = TRUE
-)
-bootstrapped_net_data |> head(3)
-```
-
-```{r}
-fit_ipw(bootstrapped_net_data$splits[[10]])
+ipw_results$boot_fits[[30]]
 ```
 
 ## Resultados
 
 ```{r}
-#| warning: false
-#| message: false
-ipw_results <- 
-  bootstrapped_net_data |>
-  mutate(boot_fits = map(splits, fit_ipw))
-ipw_results
-```
+boot_estimate <- ipw_results |>
+  # calcula el estadístico T con IC
+  int_t(boot_fits) |>
+  filter(term == "netTRUE")
 
-```{r}
-ipw_results$boot_fits[[30]]
+boot_estimate |> knitr::kable()
 ```
-
 
 ```{r}
 #| warning: false
 #| message: false
+
 ipw_results |>
   mutate(
     estimate = map_dbl(
@@ -776,27 +649,13 @@ ipw_results |>
     )
   ) |>
   ggplot(aes(estimate)) +
-  geom_histogram(fill = "#006EC1", color = "white", alpha = 0.8)
-  # geom_histogram(fill = "#D55E00FF", color = "white", alpha = 0.8)
+  geom_histogram(fill = "#006EC1", color = "white", alpha = 0.8) + 
+  geom_vline(xintercept = -10, color = "black", linetype = 1, size = 1)
 ```
-
-
-```{r}
-boot_estimate <- ipw_results |>
-  # calculate T-statistic-based CIs
-  int_t(boot_fits) |>
-  filter(term == "netTRUE")
-
-boot_estimate
-```
-
 
 # 6. Análisis sensibilidad
 
-
-## [Caso Malaria]
-
-
+## \[Caso Malaria\]
 
 ```{r}
 tipping_points <- tip_coef(boot_estimate$.upper, exposure_confounder_effect = 1:5)
@@ -805,14 +664,13 @@ tipping_points <- tip_coef(boot_estimate$.upper, exposure_confounder_effect = 1:
 ```{r}
 tipping_points |>
   ggplot(aes(confounder_outcome_effect, exposure_confounder_effect)) +
-  geom_line(color = "#009E73", linewidth = 1.1) +
-  geom_point(fill = "#009E73", color = "white", size = 2.5, shape = 21) +
+  geom_line(color = "#D55E00FF", linewidth = 1.1) +
+  geom_point(fill = "#D55E00FF", color = "white", size = 2.5, shape = 21) +
   labs(
     x = "Confounder-Outcome Effect",
     y = "Scaled mean differences in\n confounder between exposure groups"
   )
 ```
-
 
 ```{r}
 adjusted_estimates <- boot_estimate |>
@@ -821,27 +679,28 @@ adjusted_estimates <- boot_estimate |>
 ```
 
 
+# Gracias
+
+¿Preguntas?
+
 
 
 
 
 # Referencias
 
+Documentos:
 
-Documentos: 
+-   Tools and educational material for causal inference in R. [Causal Inference in R Github](https://github.com/r-causal)
 
-- Tools and educational material for causal inference in R. [Causal Inference in R Github](https://github.com/r-causal) 
-- Matching and inverse probability weighting. [Dr. Andrew Heiss](https://evalsp21.classes.andrewheiss.com/example/matching-ipw/#program-background)
-- A Survey of Causal Inference Applications at Netflix [Netflix Technology Blog](https://netflixtechblog.com/a-survey-of-causal-inference-applications-at-netflix-b62d25175e6f)
-- Causal Inference: What If [Hernán, M](https://www.hsph.harvard.edu/miguel-hernan/wp-content/uploads/sites/1268/2024/01/hernanrobins_WhatIf_2jan24.pdf)
+-   Matching and inverse probability weighting. [Dr. Andrew Heiss](https://evalsp21.classes.andrewheiss.com/example/matching-ipw/#program-background)
 
-- [Quarto Presentations](https://quarto.org/docs/presentations/revealjs/)
+-   A Survey of Causal Inference Applications at Netflix [Netflix Technology Blog](https://netflixtechblog.com/a-survey-of-causal-inference-applications-at-netflix-b62d25175e6f)
 
-Librerías: 
+-   Causal Inference: What If [Hernán, M](https://www.hsph.harvard.edu/miguel-hernan/wp-content/uploads/sites/1268/2024/01/hernanrobins_WhatIf_2jan24.pdf)
 
-- [`tipr`](https://r-causal.github.io/tipr/) McGowan LD (2022). tipr: An R package for sensitivity analyses for unmeasured confounders. Journal of Open Source Software, 7(77), 4495
+-   [Quarto Presentations](https://quarto.org/docs/presentations/revealjs/)
 
+Librerías:
 
-
-
-
+-   [`tipr`](https://r-causal.github.io/tipr/) McGowan LD (2022). tipr: An R package for sensitivity analyses for unmeasured confounders. Journal of Open Source Software, 7(77), 4495
