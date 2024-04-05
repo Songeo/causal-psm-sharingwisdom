@@ -709,6 +709,8 @@ Se puede concluir que los mosquiteros parecen reducir el riesgo en este estudio.
 # Referencias
 
 
+Repositorio Código [Github](https://github.com/Songeo/causal_psm_sharingwisdom/tree/main)
+
 - [Matching and inverse probability weighting](https://evalsp21.classes.andrewheiss.com/example/matching-ipw/#program-background). Dr. Andrew Heiss. Georgia State University. Andrew Young School of Policy Studies. October 2, 2020.
 - [Causal Inference in R](https://www.r-causal.org/) Barrett M,  D'Agostino McGowan L, Gerke T. r-causal.org. March 2024. 
 - [Causal Inference: What If](https://www.hsph.harvard.edu/miguel-hernan/wp-content/uploads/sites/1268/2024/01/hernanrobins_WhatIf_2jan24.pdf). Hernán, M. A. and Robins, J. M. Chapman Hall/CRC. 2021.
