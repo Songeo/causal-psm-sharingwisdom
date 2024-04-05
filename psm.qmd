@@ -500,9 +500,21 @@ matched
 
 ## \[Caso Malaria\] Muestra balanceada
 
+::: panel-tabset
+
+
+### Resúmen de matching
 ```{r}
 summary(matched)
 ```
+### Datos emparejados
+```{r}
+net_matched_wts |> head(20) |> knitr::kable()
+```
+
+
+
+:::
 
 # 5. Estimar efecto causal
 
@@ -703,7 +715,7 @@ Se puede concluir que los mosquiteros parecen reducir el riesgo en este estudio.
 
 ![](img/03_xkcd.png){width="90%"}
 
-¡Gracias!
+**¡Gracias!**
 
 
 # Referencias
@@ -717,6 +729,8 @@ Repositorio Código [Github](https://github.com/Songeo/causal_psm_sharingwisdom/
 - Greifer, Noah, and Elizabeth A Stuart. 2021. Choosing the Estimand When Matching or Weighting in Observational Studies. arXiv Preprint arXiv:2106.10577.
 - Rosenbaum, Paul R and Rubin, Donald B. 1983. The central role of the propensity score in observational studies for causal effects. Biometrika. volume 70, pages 41--55.
 - Netflix Technology Blog. 2022. [A Survey of Causal Inference Applications at Netflix](https://netflixtechblog.com/a-survey-of-causal-inference-applications-at-netflix-b62d25175e6f).
+- Alexander L, Lopes B, Ricchetti-Masterson K and Yeatts B. 2015. [Ecologic Studies](https://sph.unc.edu/wp-content/uploads/sites/112/2015/07/nciph_ERIC9.pdf). 
+Second Edition. UNC CH Department of Epidemiology Medic.
 
 # Librerías
 
