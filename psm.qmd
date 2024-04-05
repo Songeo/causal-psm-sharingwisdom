@@ -25,6 +25,18 @@ execute:
 ```{r, echo=FALSE}
 library(tidyverse)
 library(causalworkshop)
+
+# ggplot setup 
+theme_set(theme_bw())  
+
+options(
+  # set default colors in ggplot2 to colorblind-friendly
+  # Okabe-Ito and Viridis palettes
+  ggplot2.discrete.colour = ggokabeito::palette_okabe_ito(),
+  ggplot2.discrete.fill = ggokabeito::palette_okabe_ito(),
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
 ```
 
 # Contexto
@@ -51,17 +63,32 @@ En la práctica, esto significa utilizar técnicas como:
 
 -   Métodos estadísticos (como scores de propensión) para calcular un efecto no sesgado de la exposición sobre el resultado.
 
+
+# Workflow de inferencia causal
+
+Análisis causal mediante unos pasos clave:
+
+1.  Especificar pregunta causal
+2.  Dibujar hipótesis mediante un diagrama causal
+3.  Modelar supuestos
+4.  Diagnosticar modelos
+5.  Estimar el efecto causal
+6.  Estimar varianza del efecto
+
+
 # Datos
 
-Datos **simulados** por el [Dr. Andrew Heiss](https://evalsp21.classes.andrewheiss.com/example/matching-ipw/#program-background):
+Ejercición y datos **simulados** por el Dr. Andrew Heiss tomados del curso [PMAP 8141 Program Evaluation for Public Service](https://evalsp21.classes.andrewheiss.com/example/matching-ipw/#program-background) de Georgia State University:
 
-**Objetivo:** saber si el uso de mosquiteras disminuye el riesgo de que un hogar contraiga la malaria.
+> **OBJ:** saber si el uso de mosquiteros disminuye el riesgo de que un hogar contraiga malaria.
 
-Universo de 1.752 hogares de un país sin nombre y tienen variables relacionadas con factores ambientales, la salud individual y las características del hogar.
+Universo de 1,752 hogares de un país sin nombre y tienen variables relacionadas con factores ambientales, la salud individual y las características del hogar.
 
-Los datos no son experimentales: los investigadores no tienen control sobre quién utiliza mosquiteras, y cada hogar decide por sí mismo si solicita mosquiteras gratuitas o las compra, y si las utiliza en caso de tenerlas.
+Los datos no son experimentales: los investigadores no tienen control sobre quién utiliza mosquiteros, y cada hogar decide por sí mismo si los solicita gratuitos o las compra, y si los utiliza en caso de tenerlas.
 
 ## Setup
+
+Paquetes de R 
 
 ```{r libraries}
 #| echo: true
@@ -76,9 +103,6 @@ library(dagitty)  # usar lógica de DAGs
 library(halfmoon) # graficos 
 library(rsample) # remuestreo 
 library(tipr) # sensitivity analysis 
-
-# ggplot setup 
-theme_set(theme_bw())  
 ```
 
 La estructura de los datos y una muestra se presentan a continuación:
@@ -109,17 +133,6 @@ knitr::kable(net_data_full |> head(3))
 -   Resistencia a insecticidas (`insectide_resistance`): Algunas cepas de mosquitos son más resistentes a los insecticidas y, por tanto, suponen un mayor riesgo de infectar a las personas con malaria. Se mide en una escala de 0 a 100, en la que los valores más altos indican una mayor resistencia.
 -   Resistencia genética (`genetic_resistance`): Variable binaria que indica si el hogar tiene resistencia genética la malaria, lo que reduce el riesgo de malaria.
 
-# Workflow de inferencia causal
-
-Análisis causal mediante unos pasos clave:
-
-1.  Especificar pregunta causal
-2.  Dibujar hipótesis mediante un diagrama causal
-3.  Modelar supuestos
-4.  Diagnosticar modelos
-5.  Estimar el efecto causal
-6.  Realizar análisis de sensibilidad sobre la estimación del efecto
-
 ## \[Caso Malaria\] Proceso de análisis
 
 Para calcular este efecto
@@ -129,7 +142,7 @@ Para calcular este efecto
 3.  Modelar supuestos (utilizando el score de propensión)
 4.  Diagnosticar modelos (comprobando el equilibrio de los factores de confusión tras la ponderación)
 5.  Estimar el efecto causal (mediante ponderación de probabilidad inversa y matching)
-6.  Análisis de sensibilidad de la estimación del efecto (mediante análisis de puntos de inflexión)
+6.  Estimar varianza del efecto (mediante bootstrap)
 
 # 1. Pregunta causal
 
@@ -150,10 +163,12 @@ Utilizaremos datos simulados para responder a una pregunta más específica: ¿D
 
 -   *exposure*: uso de mosquiteros tratados con insecticida
 -   *outcome* riesgo de contraer malaria
--   criterios de elegibilidad:
--   tiempo cero: recepción del mosquitero
+-   criterios de elegibilidad: hogares  
+-   tiempo cero: inicio de verano
 -   población objetivo: hogares de un país sin nombre
 -   periodo de seguimiento: un año
+
+![](img/02_diagram_causal_malaria.png){width="90%"}
 
 ## \[Caso Malaria\] Distribución del riesgo
 
@@ -197,8 +212,8 @@ malaria_dag <- dagify(
   net ~ income + health + temperature + eligible + household + genetic_resistance,
   eligible ~ income + household,
   health ~ income,
-  outcome = "malaria_risk",
   exposure = "net",
+  outcome = "malaria_risk",
   coords = list(x = c(malaria_risk = 7.5, 
                       net = 4, 
                       income = 4, 
@@ -233,7 +248,7 @@ ggdag_status(malaria_dag,
              text = FALSE, 
              text_size = 4,
              use_stylized = T) +
-  guides(fill = FALSE, color = FALSE) +  # Disable the legend
+  guides(fill = FALSE, color = FALSE) + 
   theme_dag_blank()
 ```
 
@@ -254,32 +269,36 @@ adjustmentSets(malaria_dag)
 
 # 3. Modelar hipótesis
 
-El score de propensión simula la relación entre la exposición y el resultado si hubiéramos realizado un ensayo aleatorio. Al ajustar un modelo de puntuación de propensión, queremos condicionar todos los factores de confusión conocidos. La correlación entre la exposición y el resultado estimará el efecto causal tras aplicar una puntuación de propensión.
-
-> **DEF:** Un **score de propensión** es la probabilidad de estar en el grupo de exposición, condicionada a las covariables observadas.
-
-Cuando se utiliza adecuadamente, el modelo con una propensión puede simular cómo habría sido la relación entre la exposición y el resultado si hubiéramos realizado un ensayo aleatorizado.
+Propensity score matching simula la relación entre la exposición y el resultado si hubiéramos realizado un ensayo aleatorio. La correlación entre la exposición y el resultado estimará el efecto causal tras estimar score de propensión.
 
 Rosenbaum y Rubin (1983) demostraron que en los estudios observacionales el condicionamiento a los scores de propensión puede conducir a estimaciones **no sesgadas** del efecto siempre y cuando se cumplan los supuestos:
 
 -   No hay factores de confusión no medidos
 -   Cada sujeto tiene una probabilidad distinta de cero de recibir una u otra exposición
 
-------------------------------------------------------------------------
+## Score de propensión
+
+Al ajustar un modelo de score de propensión, queremos condicionar todos los factores de confusión conocidos.
+
+> **DEF:** Un **score de propensión** es la probabilidad de estar en el grupo de exposición, condicionada a las covariables observadas.
 
 Supongamos que recopilamos información completa sobre todos estos factores de confusión. En ese caso, podríamos determinar la probabilidad de exposición de cada hogar y utilizarla para evaluar un análisis que identifique la relación entre la exposición y algún resultado.
-
-Hay muchas formas de incorporar el score de propensión a un análisis. Las técnicas más utilizadas incluyen la estratificación (estimación del efecto causal dentro del estrato de puntuación de propensión), el emparejamiento, la ponderación y el ajuste directo de covariables.
 
 Hay muchas formas de generar scores de propensión (como la regresión logística, la regresión probit e incluso técnicas de aprendizaje automático como los bosques aleatorios y las redes neuronales), pero la **regresión logística** es probablemente el método más común.
 
 La variable resultado en los modelos de regresión logística debe ser binaria, y las variables explicativas que se incluyen en el modelo ayudan a explicar la variación en la probabilidad del resultado binario.
+
+Hay muchas formas de incorporar el score de propensión a un análisis. Las técnicas más utilizadas incluyen la estratificación (estimación del efecto causal dentro del estrato de puntuación de propensión), el emparejamiento, la ponderación y el ajuste directo de covariables.
 
 ## Matching
 
 El objetivo es que las observaciones expuestas y no expuestas sean intercambiables con respecto a los factores de confusión que hemos propuesto en nuestro DAG (de forma que podamos utilizar el efecto observado para una para estimar el contrafactual para la otra).
 
 Una forma de hacerlo es garantizar que cada observación de nuestra muestra de análisis tenga al menos una observación de la exposición opuesta que tenga valores coincidentes para cada uno de estos factores de confusión.
+
+
+![](img/01_matching.png){width=50%, fig-align="center"}
+
 
 ## \[Caso Malaria\] Score de propensión
 
@@ -328,11 +347,11 @@ ggplot(net_data_ps, aes(scores)) +
 
 # 4. Diagnostico
 
-Asumiendo un escenario con dos niveles de exposición: expuesto: $X= 1$ y no expuesto: $X=0$
+Asumiendo un escenario con dos niveles de exposición: - Expuesto $X = 1$ - No expuesto $X=0$
 
-Entonces, los resultados potenciales para la exposición ($Y(1) = [Y_1|X=1]$) y sin exposición ($Y(0) = [Y_0|X=0]$).
+De tal forma que, los resultados potenciales son: - Con exposición ($Y(1) = [Y_1|X=1]$) - Sin exposición ($Y(0) = [Y_0|X=0]$).
 
-La diferencia entre estos resultados $Y(1)-Y(0)$, es decir para comprender el impacto de la entrada (la exposición) en el resultado.
+Entonces, la diferencia entre estos resultados para comprender el impacto de la exposición en el resultado es $Y(1) - Y(0)$.
 
 Los supuestos son:
 
@@ -378,7 +397,11 @@ Es común en estos casos observar desbalance en la distribución de los scores e
 
 La ponderación permite que el score sea suave, aplicando una transformación que permita, en promedio, que las covariables de interés estén equilibradas en la población ponderada. Para ello, construiremos un peso utilizando el score de propensión.
 
-La siguiente ponderación de probabilidad inversa permitirá estimar el efecto usando la ponderacaión $w_~{ATT}$ del score de propensión $p$, donde $X$ representa el valor de exposición o tratamiento.
+La siguiente ponderación de probabilidad inversa permitirá estimar el efecto usando la ponderación $w_{ATE}$ de efecto promedio del tratamiento del score de propensión $p$, donde $X$ representa el valor de exposición o tratamiento.
+
+$$
+w_{ATE} = \frac{X}{p} - \frac{(1-X)}{(1-p)}
+$$
 
 ## \[Caso Malaria\] Ponderación
 
@@ -461,8 +484,6 @@ ggplot(
 
 ## \[Caso Malaria\] Matching
 
-
-
 ```{r}
 matched <- matchit(
   net ~ income + health + temperature + genetic_resistance,
@@ -483,7 +504,6 @@ matched
 summary(matched)
 ```
 
-
 # 5. Estimar efecto causal
 
 Dependiendo del objetivo del estudio o de la pregunta causal, es posible que queramos estimar diferentes estimandos.
@@ -492,91 +512,93 @@ A continuación, describiremos dos de los estimadores causales más comunes, sus
 
 **Estimadores:**
 
-- **Average treatment effect** (ATE). La población objetivo es la muestra total o la población de interés.
+-   **Average treatment effect** (ATE). La población objetivo es la muestra total o la población de interés.
 
-En este caso, el estimando es el valor esperado de la diferencia en los resultados potenciales de todos los individuos. $$
+En este caso, el estimando es el valor esperado de la diferencia en los resultados potenciales de todos los individuos.
+
+$$
 E[Y(1)- Y(0)] 
 $$
 
 Un ejemplo de pregunta de investigación es ¿Debe aplicarse una política a todos los pacientes elegibles?.
 
-La siguiente ponderación de probabilidad inversa le permitirá estimar ATE utilizando la ponderación del score de propensión: $$
-w_{ATT} = \frac{X}{p} - \frac{(1-X)}{(1-p)}
-$$ La mayoría de los ensayos controlados aleatorios se diseñan con ATE como estimación objetivo.
+La siguiente ponderación de probabilidad inversa le permitirá estimar ATE utilizando la ponderación del score de propensión:
 
+$$
+w_{ATE} = \frac{X}{p} - \frac{(1-X)}{(1-p)}
+$$
 
-----
+La mayoría de los ensayos controlados aleatorios se diseñan con ATE como estimación objetivo.
 
-- **Average treatment effect among the treated** (ATT). La población objetivo para estimar el efecto medio del tratamiento entre los tratados (ATT) es la población expuesta (tratada).
+------------------------------------------------------------------------
 
-Este estimador causal condiciona a aquellos en el grupo expuesto: $$
+-   **Average treatment effect among the treated** (ATT). La población objetivo para estimar el efecto medio del tratamiento entre los tratados (ATT) es la población expuesta (tratada).
+
+Este estimador causal condiciona a aquellos en el grupo expuesto:
+
+$$
 E[Y(1)- Y(0)|X=1]
 $$
 
-Ejemplos de preguntas de investigación en las que el TCA es de interés podrían incluir ¿Deberíamos detener nuestra campaña de marketing para aquellos que actualmente lo reciben? o ¿Deberían los proveedores médicos dejar de recomendar el tratamiento a aquellos que actualmente lo reciben? (Greifer y Stuart 2021)
+Ejemplos de preguntas de investigación son: ¿Deberíamos detener nuestra campaña de marketing para aquellos que actualmente lo reciben? o ¿Deberían los proveedores médicos dejar de recomendar el tratamiento a aquellos que actualmente lo reciben? (Greifer y Stuart 2021)
 
-ATT puede estimarse mediante ponderación. La ponderación de la TCA se estima mediante: $$
+ATT puede estimarse mediante ponderación. La ponderación se estima de la forma:
+
+$$
 w_{ATT} = X - \frac{(1-X) \cdot p}{(1-p)}
 $$
 
 Es común usar ATT cuando se utiliza matching, todas las observaciones expuestas se incluyen y se "emparejan" con las observaciones de control, algunas de las cuales pueden descartarse.
 
-## Estimación de varianza
-
-Una forma de estimar la varianza del estimador es mediante **Bootstrap Sampling**. 
-Bootstrap es un algoritmo sencillo para calcular estimaciones o estadísticos
-medianteremuestreo con sustitución. 
-
-Resulta útil cuando no existe una solución de forma cerrada para 
-calcular algo, como suele ocurrir en la inferencia causal 
-(sobre todo para los errores estándar), y cuando sospechamos que los 
-cálculos paramétricos no son válidos para una situación determinada.
-
-El proceso consiste en:
-
-1. Re muestrear los datos con reemplazo 
-2. Ajustar el estimador a la muestra Bootstrap
-3. Repite N veces.
-
-Finalmente, se obtiene la distribución de estimaciones,
-con la que podemos calcular estadísticos descriptivos de población, 
-como estimaciones puntuales, errores estándar e intervalos de confianza.
-
-
 ## \[Caso Malaria\] Estimación de diferencia
+
+Estimación de diferencia $[Y(1) - Y(0)]$:
 
 Estimación *naive*
 
 ```{r}
-reg_model <- lm(malaria_risk ~ net, 
+(reg_model <- lm(malaria_risk ~ net, 
                 data = net_data_full) |> 
-  tidy(conf.int = TRUE)
-reg_model
+  tidy(conf.int = TRUE))
 ```
 
 Estimación *matched*
 
 ```{r}
-reg_model <- lm(malaria_risk ~ net, 
+(reg_model <- lm(malaria_risk ~ net, 
                 data = net_matched_wts) |> 
-  tidy(conf.int = TRUE)
-reg_model
+  tidy(conf.int = TRUE))
 ```
 
 Estimación *matched + weights*
 
 ```{r}
-reg_model <- lm(malaria_risk ~ net, 
+(reg_model <- lm(malaria_risk ~ net, 
                 data = net_matched_wts, 
                 weights = weights) |> 
-  tidy(conf.int = TRUE)
-reg_model
+  tidy(conf.int = TRUE))
 ```
+
+
+## 6. Estimación de varianza
+
+Una forma de estimar la varianza del estimador es mediante **Bootstrap Sampling**. Bootstrap es un algoritmo sencillo para calcular estimaciones o estadísticos medianteremuestreo con sustitución.
+
+Resulta útil cuando no existe una solución de forma cerrada para calcular algo, como suele ocurrir en la inferencia causal (sobre todo para los errores estándar), y cuando sospechamos que los cálculos paramétricos no son válidos para una situación determinada.
+
+El proceso consiste en:
+
+1.  Re muestrear los datos con reemplazo
+2.  Ajustar el estimador a la muestra Bootstrap
+3.  Repite R veces.
+
+Finalmente, se obtiene la distribución de estimaciones, con la que podemos calcular estadísticos descriptivos de población, como estimaciones puntuales, errores estándar e intervalos de confianza.
+
 
 ## \[Caso Malaria\] Muestras bootstrap
 
 ```{r}
-set.seed(198710)
+set.seed(19871002)
 
 bootstrapped_net_data <- bootstraps(
   net_data_full,
@@ -602,21 +624,22 @@ fit_psm <- function(split) {
   # convierte muestra bootstrapped a df
   .df <- analysis(split)
 
+  formula_net <-  net ~ income + health + temperature + genetic_resistance
   # Estimas scores
-  propensity_model <- glm(
-    net ~ income + health + temperature + insecticide_resistance,
+  p_model <- glm(
+    formula_net,
     data = .df,
     family = binomial()
   )
 
   # Calculo de pesos
-  .df <- propensity_model |>
+  .df <- p_model |>
     augment(type.predict = "response", data = .df) |>
     mutate(wts = wt_ate(.fitted, net))
 
   # Match de hogares
   matched <- matchit(
-    net ~ income + health + temperature + insecticide_resistance ,
+    formula_net,
     data = .df,
     distance = "glm",
     link = "logit", 
@@ -641,15 +664,6 @@ ipw_results$boot_fits[[30]]
 
 ## Resúmen de distribución
 
-```{r}
-boot_estimate <- ipw_results |>
-  # calcula el estadístico T con IC
-  int_t(boot_fits) |>
-  filter(term == "netTRUE")
-
-boot_estimate |> knitr::kable()
-```
-
 ```{r, fig.align='center'}
 #| warning: false
 #| message: false
@@ -669,51 +683,49 @@ ipw_results |>
   geom_vline(xintercept = -10, color = "black", linetype = 1, size = 1)
 ```
 
-# 6. Análisis sensibilidad
-
-## \[Caso Malaria\]
+## Conclusión
 
 ```{r}
-tipping_points <- tip_coef(boot_estimate$.upper, exposure_confounder_effect = 1:5)
+boot_estimate <- ipw_results |>
+  # calcula el estadístico T con IC
+  int_t(boot_fits) |>
+  filter(term == "netTRUE")
+
+boot_estimate |> knitr::kable()
 ```
 
-```{r}
-tipping_points |>
-  ggplot(aes(confounder_outcome_effect, exposure_confounder_effect)) +
-  geom_line(color = "#D55E00FF", linewidth = 1.1) +
-  geom_point(fill = "#D55E00FF", color = "white", size = 2.5, shape = 21) +
-  labs(
-    x = "Confounder-Outcome Effect",
-    y = "Scaled mean differences in\n confounder between exposure groups"
-  )
-```
+La estimación del efecto de todos los hogares que utilizan mosquiteros frente a ningún hogar que los utiliza sobre el riesgo de malaria es de `r round(boot_estimate$.estimate, 1)` (IC del 95%: `r round(boot_estimate$.lower, 1)`; `r round(boot_estimate$.upper, 1)`).
 
-```{r}
-adjusted_estimates <- boot_estimate |>
-  select(.estimate, .lower, .upper) |>
-  unlist() 
-```
+Se puede concluir que los mosquiteros parecen reducir el riesgo en este estudio.
 
 # Dudas
 
+
+![](img/03_xkcd.png){width="90%"}
+
 ¡Gracias!
+
 
 # Referencias
 
-Documentos:
 
--   Tools and educational material for causal inference in R. [Causal Inference in R Github](https://github.com/r-causal)
+- [Matching and inverse probability weighting](https://evalsp21.classes.andrewheiss.com/example/matching-ipw/#program-background). Dr. Andrew Heiss. Georgia State University. Andrew Young School of Policy Studies. October 2, 2020.
+- [Causal Inference in R](https://www.r-causal.org/) Barrett M,  D'Agostino McGowan L, Gerke T. r-causal.org. March 2024. 
+- [Causal Inference: What If](https://www.hsph.harvard.edu/miguel-hernan/wp-content/uploads/sites/1268/2024/01/hernanrobins_WhatIf_2jan24.pdf). Hernán, M. A. and Robins, J. M. Chapman Hall/CRC. 2021.
+- Greifer, Noah, and Elizabeth A Stuart. 2021. Choosing the Estimand When Matching or Weighting in Observational Studies. arXiv Preprint arXiv:2106.10577.
+- Rosenbaum, Paul R and Rubin, Donald B. 1983. The central role of the propensity score in observational studies for causal effects. Biometrika. volume 70, pages 41--55.
+- Netflix Technology Blog. 2022. [A Survey of Causal Inference Applications at Netflix](https://netflixtechblog.com/a-survey-of-causal-inference-applications-at-netflix-b62d25175e6f).
 
--   Matching and inverse probability weighting. [Dr. Andrew Heiss](https://evalsp21.classes.andrewheiss.com/example/matching-ipw/#program-background)
+# Librerías
 
--   A Survey of Causal Inference Applications at Netflix [Netflix Technology Blog](https://netflixtechblog.com/a-survey-of-causal-inference-applications-at-netflix-b62d25175e6f)
+- [`tidyverse`](https://www.tidyverse.org/) Wickham H, et al. (2019). R package version 2.0.0
+- [`broom`](https://r-causal.github.io/tipr/) Robinson D, Hayes A, Couch S (2023). R package version 1.0.5
+- [`causalworkshop`](https://github.com/malcolmbarrett/causalworkshop) Barrett M, D'Agostino McGowan L (2024). R package version 0.1.0
+- [`propensity`](https://r-causal.github.io/propensity/) Barrett M (2024). R package version 0.0.0.9000
+- [`MatchIt`](https://doi.org/10.18637/jss.v042.i08) Ho D, Imai K, King G, Stuart E (2011). R package version 4.5.5
+- [`ggdag`](https://github.com/r-causal/ggdag) Barrett M (2024). R package version 0.2.11.9000
+- [`dagitty`](https://doi.org/10.1093/ije/dyw341) Textor J, van der Zander B, Gilthorpe MS (2016). R package version 0.3.4
+- [`halfmoon`](https://CRAN.R-project.org/package=halfmoon) Barrett M (2023). R package version 0.1.0
+- [`rsample`](https://CRAN.R-project.org/package=rsample)  Frick H, Chow F, Kuhn M, Mahoney M, Silge J, Wickham H (2023). R package version 1.2.0
 
--   Causal Inference: What If [Hernán, M](https://www.hsph.harvard.edu/miguel-hernan/wp-content/uploads/sites/1268/2024/01/hernanrobins_WhatIf_2jan24.pdf)
 
--   Greifer, Noah, and Elizabeth A Stuart. 2021. Choosing the Estimand When Matching or Weighting in Observational Studies. arXiv Preprint arXiv:2106.10577.
-
--   [Quarto Presentations](https://quarto.org/docs/presentations/revealjs/)
-
-Librerías:
-
--   [`tipr`](https://r-causal.github.io/tipr/) McGowan LD (2022). tipr: An R package for sensitivity analyses for unmeasured confounders. Journal of Open Source Software, 7(77), 4495
