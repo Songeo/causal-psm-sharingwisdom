@@ -1,5 +1,5 @@
 # causal_psm_sharingwisdom
 
-- Presentación .html
+- Presentación [psm.html]
 
-- Código de presentación .qmd
+- Código de presentación [psm.qmd]
